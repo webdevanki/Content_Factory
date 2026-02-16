@@ -6,16 +6,15 @@ if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
 # ---------------------------
 
-# ZMIANA IMPORTÓW: Dodajemy VideoFileClip i vfx
 from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, ColorClip, vfx
 import os
 from config import OUTPUT_DIR
 from moviepy.config import change_settings
 
-# TWOJA ŚCIEŻKA (7.1.2) - BEZ ZMIAN
-change_settings({"IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"})
+# Ścieżka wymuszana tylko, gdy odpalamy skrypt lokalnie na Windowsie
+if os.name == 'nt':
+    change_settings({"IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"})
 
-# ZMIANA: Ta funkcja nazywa się teraz assemble_final_video i przyjmuje wideo (ai_video_path)
 def assemble_final_video(ai_video_path, audio_path, hook_text, output_filename):
     print(f"🎬 [KROK 4/4] Montaż końcowy (Składanie całości): {output_filename}...")
     
