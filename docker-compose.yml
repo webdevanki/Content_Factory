@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  content-factory:
+    build: .
+    volumes:
+      # Łączymy foldery z komputera z folderami w kontenerze
+      - ./output:/app/output
+      - ./temp:/app/temp
+      - ./assets:/app/assets
+    env_file:
+      # Wstrzykujemy klucze z .env
+      - .env
