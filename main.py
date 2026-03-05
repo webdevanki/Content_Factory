@@ -50,7 +50,7 @@ def main():
         audio_path = generate_voice(task['body'], task_id)
         if not audio_path:
             logger.error("Przerwano: Blad audio.")
-             continue
+            continue
 
         # 4. KROK: Montaż końcowy (MoviePy)
         try:

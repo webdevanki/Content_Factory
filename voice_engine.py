@@ -1,5 +1,5 @@
 import requests
-from config import ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, TEMP_DIR
+from config import ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, TEMP_DIR, versioned_path
 import os
 from logger import logger
 
@@ -29,7 +29,7 @@ def generate_voice(text, filename):
         logger.error(f"BLAD ElevenLabs: {response.text}")
         return None
 
-    path = os.path.join(TEMP_DIR, f"{filename}.mp3")
+    path = versioned_path(TEMP_DIR, filename, "mp3")
     
     with open(path, 'wb') as f:
         f.write(response.content)

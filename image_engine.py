@@ -1,38 +1,38 @@
 # image_engine.py
-import replicate
-import requests
 import os
-from config import MEDICAL_STYLE, TEMP_DIR
+import base64
+from google import genai
+from google.genai import types
+from config import MEDICAL_STYLE, TEMP_DIR, GOOGLE_CLOUD_API_KEY, versioned_path
 from logger import logger
 
-def generate_medical_image(prompt_subject, filename):
-    logger.info(f"[KROK 1/4] Generowanie ZDJECIA BAZOWEGO (Flux Pro): {prompt_subject}...")
-    
-    # Dodajemy "action shot" do prompta
+client = genai.Client(api_key=GOOGLE_CLOUD_API_KEY)
+
+def generate_medical_image(prompt_subject: str, filename: str) -> str | None:
+    logger.info(f"[KROK 1/4] Generowanie ZDJECIA BAZOWEGO (Gemini Imagen): {prompt_subject}...")
+
     full_prompt = f"Action shot of {prompt_subject}, {MEDICAL_STYLE}"
 
     try:
-        output = replicate.run(
-            "black-forest-labs/flux-1.1-pro",
-            input={
-                "prompt": full_prompt,
-                "aspect_ratio": "9:16",
-                "output_format": "png",
-                "output_quality": 100,
-                "safety_tolerance": 2
-            }
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-image-preview",
+            contents=full_prompt,
+            config=types.GenerateContentConfig(
+                response_modalities=["IMAGE"],
+                image_config=types.ImageConfig(
+                    aspect_ratio="9:16",
+                ),
+            ),
         )
 
-        image_url = str(output)
-        logger.info("Zdjecie gotowe. Pobieranie...")
-        img_data = requests.get(image_url).content
-        
-        path = os.path.join(TEMP_DIR, f"{filename}.png")
-        with open(path, 'wb') as handler:
-            handler.write(img_data)
-            
+        image_data = response.parts[0].inline_data.data
+        path = versioned_path(TEMP_DIR, filename, "png")
+        with open(path, "wb") as f:
+            f.write(image_data if isinstance(image_data, bytes) else base64.b64decode(image_data))
+
+        logger.info("Zdjecie gotowe.")
         return path
-        
+
     except Exception as e:
         logger.error(f"Blad generowania obrazu: {e}")
         return None

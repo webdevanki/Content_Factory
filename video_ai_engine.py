@@ -1,64 +1,83 @@
 # video_ai_engine.py
-import replicate
-import requests
 import os
 import time
-from replicate.exceptions import ReplicateError
-from config import TEMP_DIR
+import base64
+import io
+import requests
+from PIL import Image
+from config import TEMP_DIR, GOOGLE_CLOUD_API_KEY, versioned_path
 from logger import logger
 
-def generate_video_from_image(image_path, prompt_action, filename):
-    logger.info("[KROK 2/4] Ozywianie zdjecia (Model: Minimax)...")
-    logger.info("To potrwa kilka minut. Minimax generuje bardzo plynny ruch.")
+BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
-    # Otwieramy plik zdjęcia
-    with open(image_path, "rb") as img_file:
-        
-        # PĘTLA RETRY (Odporność na błędy sieciowe/zajęte serwery)
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                logger.info(f"Proba polaczenia {attempt+1}/{max_retries}...")
-                
-                # ZMIANA: Używamy Minimax (jest bardziej stabilny publicznie niż Kling)
-                output = replicate.run(
-                    "minimax/video-01",
-                    input={
-                        "first_frame_image": img_file, # Minimax wymaga tej nazwy parametru
-                        "prompt": f"{prompt_action}, high quality, cinematic, slow motion, 4k",
-                        "prompt_optimizer": True,      # AI ulepszy Twój prompt
-                        "loop": False
-                    }
-                )
-                
-                # Minimax zwraca URL bezpośrednio
-                video_url = str(output)
-                logger.info(f"SUKCES! Wideo wygenerowane. Pobieranie: {video_url}")
-                
-                video_data = requests.get(video_url).content
-                
-                # Zapisujemy
-                video_path = os.path.join(TEMP_DIR, f"{filename}_raw_ai.mp4")
-                with open(video_path, 'wb') as handler:
-                    handler.write(video_data)
-                    
-                return video_path
 
-            except ReplicateError as e:
-                # Obsługa błędu Rate Limit (429) - czekamy dłużej
-                if '429' in str(e) or 'throttled' in str(e.detail):
-                    wait_time = 30 # Zwiększyliśmy czas oczekiwania do 30s
-                    logger.warning(f"Serwer zajety (Tlok). Czekam {wait_time}s i probuje ponownie...")
-                    time.sleep(wait_time)
-                else:
-                    logger.error(f"Blad API Replicate: {e}")
-                    # Jeśli to błąd 404 lub 422, nie ma sensu próbować ponownie tym samym kodem
-                    if '404' in str(e) or '422' in str(e):
-                        return None
-            
-            except Exception as e:
-                logger.error(f"Nieoczekiwany blad: {e}")
-                return None
+def generate_video_from_image(image_path: str, prompt_action: str, filename: str) -> str | None:
+    logger.info("[KROK 2/4] Ozywianie zdjecia (Model: Veo)...")
+    logger.info("To potrwa kilka minut.")
 
-    logger.error("Nie udalo sie wygenerowac wideo po 3 probach.")
-    return None
+    try:
+        # Kompresja obrazu do JPEG max 1080x1920 (Veo ma limit rozmiaru)
+        img = Image.open(image_path)
+        img.thumbnail((1080, 1920), Image.LANCZOS)
+        buffer = io.BytesIO()
+        img.convert("RGB").save(buffer, format="JPEG", quality=85)
+        image_b64 = base64.b64encode(buffer.getvalue()).decode()
+        mime_type = "image/jpeg"
+        logger.info(f"Rozmiar obrazu po kompresji: {len(buffer.getvalue()) // 1024} KB")
+
+        params = {"key": GOOGLE_CLOUD_API_KEY}
+        headers = {"Content-Type": "application/json"}
+
+        payload = {
+            "instances": [{
+                "prompt": f"{prompt_action}, high quality, cinematic, slow motion, 4k",
+                "image": {
+                    "bytesBase64Encoded": image_b64,
+                    "mimeType": mime_type
+                }
+            }],
+            "parameters": {
+                "aspectRatio": "9:16",
+                "resolution": "1080p"
+            }
+        }
+
+        resp = requests.post(
+            f"{BASE_URL}/models/veo-3.1-generate-preview:predictLongRunning",
+            json=payload,
+            params=params,
+            headers=headers,
+        )
+        if not resp.ok:
+            logger.error(f"API error {resp.status_code}: {resp.text}")
+            return None
+        operation_name = resp.json()["name"]
+        logger.info(f"Operacja uruchomiona: {operation_name}")
+
+        # Polling na status operacji
+        while True:
+            op_resp = requests.get(
+                f"{BASE_URL}/{operation_name}",
+                params=params,
+            )
+            op_data = op_resp.json()
+            if op_data.get("done"):
+                break
+            logger.info("Czekam na wideo...")
+            time.sleep(15)
+
+        # Pobieranie wideo
+        samples = op_data["response"]["generateVideoResponse"]["generatedSamples"]
+        video_uri = samples[0]["video"]["uri"]
+        logger.info(f"SUKCES! Pobieranie wideo: {video_uri}")
+
+        video_data = requests.get(video_uri, params=params).content
+        video_path = versioned_path(TEMP_DIR, f"{filename}_raw_ai", "mp4")
+        with open(video_path, "wb") as f:
+            f.write(video_data)
+
+        return video_path
+
+    except Exception as e:
+        logger.error(f"Blad generowania wideo: {e}")
+        return None

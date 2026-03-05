@@ -8,7 +8,7 @@ if not hasattr(PIL.Image, 'ANTIALIAS'):
 
 from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, ColorClip, vfx
 import os
-from config import OUTPUT_DIR
+from config import OUTPUT_DIR, versioned_path
 from moviepy.config import change_settings
 from logger import logger
 
@@ -58,7 +58,7 @@ def assemble_final_video(ai_video_path, audio_path, hook_text, output_filename):
     # 5. Render
     final_video = CompositeVideoClip([bg_clip, overlay, txt_clip], size=(1080, 1920)).set_audio(voice_clip)
     
-    output_path = os.path.join(OUTPUT_DIR, f"{output_filename}.mp4")
+    output_path = versioned_path(OUTPUT_DIR, output_filename, "mp4")
     
     final_video.write_videofile(
         output_path, 

@@ -8,9 +8,7 @@ load_dotenv()
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
 
-REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
-if REPLICATE_API_TOKEN:
-    os.environ["REPLICATE_API_TOKEN"] = REPLICATE_API_TOKEN 
+GOOGLE_CLOUD_API_KEY = os.getenv("GOOGLE_CLOUD_API_KEY")
 
 # --- STYL (PROMPT) ---
 MEDICAL_STYLE = os.getenv(
@@ -32,3 +30,16 @@ TEMP_DIR = os.path.join(BASE_DIR, os.getenv("TEMP_DIR", "temp"))
 # Upewnij się, że foldery istnieją
 for d in [ASSETS_DIR, OUTPUT_DIR, TEMP_DIR]:
     os.makedirs(d, exist_ok=True)
+
+
+def versioned_path(directory: str, filename: str, ext: str) -> str:
+    """Zwraca ścieżkę z numerem wersji jeśli plik już istnieje (np. name_v2.mp4)."""
+    path = os.path.join(directory, f"{filename}.{ext}")
+    if not os.path.exists(path):
+        return path
+    version = 2
+    while True:
+        path = os.path.join(directory, f"{filename}_v{version}.{ext}")
+        if not os.path.exists(path):
+            return path
+        version += 1
