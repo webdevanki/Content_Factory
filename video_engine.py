@@ -10,13 +10,14 @@ from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVide
 import os
 from config import OUTPUT_DIR
 from moviepy.config import change_settings
+from logger import logger
 
 # Ścieżka wymuszana tylko, gdy odpalamy skrypt lokalnie na Windowsie
 if os.name == 'nt':
     change_settings({"IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"})
 
 def assemble_final_video(ai_video_path, audio_path, hook_text, output_filename):
-    print(f"🎬 [KROK 4/4] Montaż końcowy (Składanie całości): {output_filename}...")
+    logger.info(f"[KROK 4/4] Montaz koncowy (Skladanie calosci): {output_filename}...")
     
     # Sprawdzamy czy pliki istnieją
     if not os.path.exists(ai_video_path):

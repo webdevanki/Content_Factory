@@ -1,6 +1,7 @@
 # main.py
 import os
 from config import OUTPUT_DIR
+from logger import logger
 
 # IMPORTUJEMY WSZYSTKIE 4 SILNIKI
 from image_engine import generate_medical_image 
@@ -25,30 +26,30 @@ tasks = [
 ]
 
 def main():
-    print("--- Start: ContentFactory Medical (REAL MOTION V1) ---")
+    logger.info("--- Start: ContentFactory Medical (REAL MOTION V1) ---")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     for task in tasks:
-        print(f"\n=== Przetwarzanie zadania: {task['id']} ===")
+        logger.info(f"=== Przetwarzanie zadania: {task['id']} ===")
         task_id = task['id']
 
         # 1. KROK: Obraz Bazowy (Flux)
         image_path = generate_medical_image(task['subject'], task_id)
         if not image_path: 
-            print("❌ Przerwano: Błąd generowania zdjęcia.")
+            logger.error("Przerwano: Blad generowania zdjecia.")
             continue
 
         # 2. KROK: Wideo AI na bazie zdjęcia (Kling)
         # To potrwa najdłużej (3-5 minut)
         ai_video_path = generate_video_from_image(image_path, task['action_prompt'], task_id)
         if not ai_video_path:
-            print("❌ Przerwano: Błąd generowania wideo AI.")
+            logger.error("Przerwano: Blad generowania wideo AI.")
             continue
 
         # 3. KROK: Głos (ElevenLabs)
         audio_path = generate_voice(task['body'], task_id)
         if not audio_path:
-             print("❌ Przerwano: Błąd audio.")
+            logger.error("Przerwano: Blad audio.")
              continue
 
         # 4. KROK: Montaż końcowy (MoviePy)
@@ -57,12 +58,12 @@ def main():
             final_output = assemble_final_video(ai_video_path, audio_path, task['hook'], task_id)
             
             if final_output and os.path.exists(final_output):
-                print(f"\n🎉 SUKCES! Ostateczne wideo gotowe: {final_output}")
+                logger.info(f"SUKCES! Ostateczne wideo gotowe: {final_output}")
             else:
-                 print("\n❌ Błąd: Plik końcowy nie powstał.")
+                logger.error("Blad: Plik koncowy nie powstal.")
                  
         except Exception as e:
-            print(f"\n❌ Krytyczny błąd montażu: {e}")
+            logger.error(f"Krytyczny blad montazu: {e}")
 
 if __name__ == "__main__":
     main()

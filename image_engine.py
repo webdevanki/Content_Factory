@@ -3,9 +3,10 @@ import replicate
 import requests
 import os
 from config import MEDICAL_STYLE, TEMP_DIR
+from logger import logger
 
 def generate_medical_image(prompt_subject, filename):
-    print(f"📸 [KROK 1/4] Generowanie ZDJĘCIA BAZOWEGO (Flux Pro): {prompt_subject}...")
+    logger.info(f"[KROK 1/4] Generowanie ZDJECIA BAZOWEGO (Flux Pro): {prompt_subject}...")
     
     # Dodajemy "action shot" do prompta
     full_prompt = f"Action shot of {prompt_subject}, {MEDICAL_STYLE}"
@@ -23,7 +24,7 @@ def generate_medical_image(prompt_subject, filename):
         )
 
         image_url = str(output)
-        print(f"✅ Zdjęcie gotowe. Pobieranie...")
+        logger.info("Zdjecie gotowe. Pobieranie...")
         img_data = requests.get(image_url).content
         
         path = os.path.join(TEMP_DIR, f"{filename}.png")
@@ -33,5 +34,5 @@ def generate_medical_image(prompt_subject, filename):
         return path
         
     except Exception as e:
-        print(f"❌ Błąd generowania obrazu: {e}")
+        logger.error(f"Blad generowania obrazu: {e}")
         return None
